@@ -1,0 +1,19 @@
+name: Claim
+version: '1.0-SNAPSHOT'
+main: main.Main
+api-version: '1.21'
+authors: [ Marcobohl ]
+description: Woodymc Grundstück-System
+website: marcobohl.de
+# Dependencies: Dein Plugin hängt von Vault, WorldGuard und WorldEdit ab
+depend: [Vault, WorldGuard, WorldEdit]
+commands:
+  gs:
+    description: "Aktiviere den Grundstücksmodus und verwalte Grundstücke"
+    usage: "/gs"
+  gs add:
+    description: "Fügt einen Spieler zu deinem Grundstück hinzu"
+    usage: "/gs add <playername>"
+  gs remove:
+    description: "Entfernt einen Spieler von deinem Grundstück"
+    usage: "/gs remove <playername>"
