@@ -68,7 +68,7 @@ public final class Main extends JavaPlugin {
     }
 
     private void registerListeners() {
-        Bukkit.getPluginManager().registerEvents(new GSListener((GSCommand) getCommand("gs").getExecutor()), this);
+        Bukkit.getPluginManager().registerEvents(new GSListener((GSCommand) getCommand("gs").getExecutor(), configHandler), this);
     }
 
     @Override

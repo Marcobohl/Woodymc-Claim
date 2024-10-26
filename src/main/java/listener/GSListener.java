@@ -1,6 +1,7 @@
 package listener;
 
 import commands.GSCommand;
+import handlers.ConfigHandler;
 import main.Main;
 import org.bukkit.Material;
 import org.bukkit.entity.Entity;
@@ -29,14 +30,22 @@ public class GSListener implements Listener {
 
     private final GSCommand gsCommand;
     private static final Map<UUID, Long> temporaryProtection = new HashMap<>();
+    private ConfigHandler configHandler;
 
-    public GSListener(GSCommand gsCommand) {
+    public GSListener(GSCommand gsCommand, ConfigHandler configHandler) {
         this.gsCommand = gsCommand;
+        this.configHandler = configHandler;
     }
 
+
+
     // Aktiviert temporären Schutz für 30 Sekunden
-    public static void activateTemporaryProtection(Player player) {
-        temporaryProtection.put(player.getUniqueId(), System.currentTimeMillis() + 30_000);
+    public static void activateTemporaryProtection(Player player, ConfigHandler configHandler) {
+
+        int protectionTimeSeconds = configHandler.config("savetime");
+        long protectionTimeTicks = protectionTimeSeconds * 20L;
+
+        temporaryProtection.put(player.getUniqueId(), System.currentTimeMillis() + (protectionTimeSeconds * 1_000));
 
         new BukkitRunnable() {
             @Override
@@ -44,7 +53,7 @@ public class GSListener implements Listener {
                 temporaryProtection.remove(player.getUniqueId()); // Entfernt den Schutz nach 30 Sekunden
                 player.sendMessage("Dein temporärer Schutz ist abgelaufen.");
             }
-        }.runTaskLater(getPlugin(Main.class), 200); // 600 Ticks = 30 Sekunden
+        }.runTaskLater(getPlugin(Main.class), protectionTimeTicks); // 600 Ticks = 30 Sekunden
     }
 
     // Prüft, ob ein Spieler temporären Schutz hat

@@ -3,6 +3,9 @@
 buypricePerBlock: 10.0
 sellpricePerBlock: 5.0
 
+# Stelle hier die Schutzzeit ein die ein user hat nach dem er den gs Modus Verlassen hat.
+# Zeit immer in Sekunen angebene.
+savetime: 15
 
 # Füge hier deine Weltene hinzu, in den es erlaubt ist Grundstück zu erstellen.
 allowed-worlds:

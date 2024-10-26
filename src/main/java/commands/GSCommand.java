@@ -324,7 +324,7 @@ public class GSCommand implements CommandExecutor {
             }
 
             // Aktiviert temporären Schutz für 30 Sekunden
-            GSListener.activateTemporaryProtection(player);
+            GSListener.activateTemporaryProtection(player, configHandler);
             player.sendMessage("Du wurdest an deine Startposition zurückgesetzt. Schutz ist für 10 Sekunden aktiv.");
             restoreInventoryFromJson(player);
         }
