@@ -39,11 +39,12 @@ public class GSCommand implements CommandExecutor {
     private final Logger logger;
     private ConfigHandler configHandler;
 
-    public GSCommand(Main plugin, VaultHandler vaultHandler, File dataFolder, Logger logger) {
+    public GSCommand(Main plugin, VaultHandler vaultHandler, File dataFolder, Logger logger, ConfigHandler configHandler) {
         this.vaultHandler = vaultHandler;
         this.plugin = plugin;
         this.dataFolder = dataFolder;
         this.logger = logger;
+        this.configHandler = configHandler;
     }
 
     @Override

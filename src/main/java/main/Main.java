@@ -61,7 +61,7 @@ public final class Main extends JavaPlugin {
     }
 
     private void registerCommands(File dataFolder) {
-        GSCommand gsCommand = new GSCommand(this, vaultHandler, dataFolder, getLogger());
+        GSCommand gsCommand = new GSCommand(this, vaultHandler, dataFolder, getLogger(), configHandler);
         getCommand("gs").setExecutor(gsCommand);
         getCommand("gs add").setExecutor(gsCommand);
         getCommand("gs remove").setExecutor(gsCommand);
