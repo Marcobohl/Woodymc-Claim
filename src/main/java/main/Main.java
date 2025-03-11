@@ -4,14 +4,13 @@ import commands.GSCommand;
 import handlers.ConfigHandler;
 import handlers.VaultHandler;
 import listener.GSListener;
+import listener.InventoryListener;
 import org.bukkit.Bukkit;
-import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
 import java.util.List;
-import java.util.logging.Logger;
 
 public final class Main extends JavaPlugin {
 
@@ -19,14 +18,25 @@ public final class Main extends JavaPlugin {
     private boolean vaultEnabled;
     private List<String> allowedWorlds;
     private ConfigHandler configHandler;
+    private static boolean isPlotSquaredAvailable;
+    private static Main instance;
 
     @Override
     public void onEnable() {
+        instance = this;
 
         // Erstellt den Ordner für Daten, falls er nicht existiert
         File dataFolder = new File(getDataFolder(), "data");
         if (!dataFolder.exists()) {
             dataFolder.mkdirs();
+        }
+
+        // Prüfen, ob PlotSquared auf dem Server installiert ist
+        Plugin plotSquared = Bukkit.getPluginManager().getPlugin("PlotSquared");
+        isPlotSquaredAvailable = plotSquared != null && plotSquared.isEnabled();
+
+        if (!isPlotSquaredAvailable) {
+            getLogger().info("PlotSquared nicht gefunden. Einige Funktionen sind deaktiviert.");
         }
 
         // Initialisiere Konfigurationshandler und lade Konfigurationsdatei
@@ -44,6 +54,10 @@ public final class Main extends JavaPlugin {
         registerListeners();
 
         getLogger().info("GSPlugin wurde erfolgreich geladen!");
+    }
+
+    public static Main getInstance() {
+        return instance;
     }
 
     private void setupVault() {
@@ -69,6 +83,11 @@ public final class Main extends JavaPlugin {
 
     private void registerListeners() {
         Bukkit.getPluginManager().registerEvents(new GSListener((GSCommand) getCommand("gs").getExecutor(), configHandler), this);
+        Bukkit.getPluginManager().registerEvents(new InventoryListener(), this);
+    }
+
+    public static boolean isPlotSquaredAvailable() {
+        return isPlotSquaredAvailable;
     }
 
     @Override

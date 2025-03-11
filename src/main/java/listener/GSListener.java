@@ -4,6 +4,7 @@ import commands.GSCommand;
 import handlers.ConfigHandler;
 import main.Main;
 import org.bukkit.Material;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -72,10 +73,38 @@ public class GSListener implements Listener {
     }
 
     @EventHandler
+    public void onPlayerMove(PlayerMoveEvent event) {
+        Player player = event.getPlayer();
+        if (gsCommand.isInNameMode(player)){
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         player.sendMessage("join event");
         gsCommand.restoreInventoryFromJson(player); // Prüfen und ggf. Inventar wiederherstellen
+    }
+
+    @EventHandler
+    public void onPlayerCommandPreprocess(PlayerCommandPreprocessEvent event) {
+        Player player = event.getPlayer();
+
+        // Überprüfen, ob der Spieler im GS-Modus ist
+        if (gsCommand.isInGsMode(player)) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onPlayerSwapHandItems(PlayerSwapHandItemsEvent event) {
+        Player player = event.getPlayer();
+
+        // Überprüfen, ob der Spieler im GS-Modus ist
+        if (gsCommand.isInGsMode(player)) {
+            event.setCancelled(true);
+        }
     }
 
 
@@ -84,14 +113,24 @@ public class GSListener implements Listener {
     public void onPlayerChat(AsyncPlayerChatEvent event) {
         Player sender = event.getPlayer();
 
-        // Prüfe, ob der Spieler, der die Nachricht sendet, im GS-Modus ist
+        // Prüfe, ob der Spieler im GS-Modus ist
         if (gsCommand.isInGsMode(sender)) {
-            // Blockiere das Senden der Nachricht
-            event.setCancelled(true);
-            return;
-        }
 
-        // Prüfe, ob Spieler, die die Nachricht empfangen, im GS-Modus sind
+            // Prüfen, ob der Spieler sich im Namenswahlmodus befindet
+            if (gsCommand.isInNameMode(sender) && !gsCommand.isInConfirmeMode(sender)) {
+                event.setCancelled(true); // Blockiere die Chatnachricht
+                String message = event.getMessage();
+
+                    // Speichere den Grundstücksnamen und weise an, auf Bestätigung zu warten
+                    gsCommand.setPropertyName(sender, message); // Setze den Namen
+                    sender.sendTitle("Grundstücksnamen festlegen", "Aktueller Name: " + message, 10, 999999, 10);
+                    sender.sendMessage("Klicke erneut auf den grünen Farbstoff, um den Namen zu bestätigen.");
+            }
+
+            // Blockiere das Senden der Nachricht im GS-Modus
+            event.setCancelled(true);
+        }
+        // Entferne Empfänger im GS-Modus
         event.getRecipients().removeIf(receiver -> gsCommand.isInGsMode(receiver));
     }
 
@@ -206,14 +245,18 @@ public class GSListener implements Listener {
                 }
                 event.setCancelled(true); // Verhindere Standardaktionen
             } else if (item != null && item.getType() == Material.LIME_DYE) {
-                // Spieler verwendet den grünen Farbstoff zur Bestätigung
-                gsCommand.handleLimeDyeClick(player);
-                event.setCancelled(true); // Verhindere Standardaktionen
+
+                    // Spieler verwendet den grünen Farbstoff zur Bestätigung
+                    gsCommand.handleLimeDyeClick(player);
+                    event.setCancelled(true); // Verhindere Standardaktionen
+
             } else if (item != null && item.getType() == Material.RED_DYE) {
                 // Spieler verwendet den roten Farbstoff zum Abbrechen
                 gsCommand.exitGsMode(player); // Inventar wiederherstellen
                 player.sendMessage("Grundstücksauswahl abgebrochen.");
                 event.setCancelled(true); // Verhindere Standardaktionen
+            } else {
+                event.setCancelled(true);
             }
         }
     }

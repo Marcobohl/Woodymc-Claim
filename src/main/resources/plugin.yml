@@ -9,8 +9,11 @@ website: marcobohl.de
 depend: [Vault, WorldGuard, WorldEdit]
 commands:
   gs:
-    description: "Aktiviere den Grundstücksmodus und verwalte Grundstücke"
+    description: "Öffne die Grundstücks GUI"
     usage: "/gs"
+  gs create:
+    description: "Aktiviere den Grundstücksmodus und verwalte Grundstücke"
+    usage: "/gs create"
   gs add:
     description: "Fügt einen Spieler zu deinem Grundstück hinzu"
     usage: "/gs add <playername>"

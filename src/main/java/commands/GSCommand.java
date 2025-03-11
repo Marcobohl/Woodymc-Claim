@@ -1,6 +1,8 @@
 package commands;
 
 import com.google.gson.Gson;
+import gui.GUIGrundstueckverwaltung;
+import gui.GUIManager;
 import handlers.ConfigHandler;
 import handlers.VaultHandler;
 import listener.GSListener;
@@ -15,6 +17,8 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.permissions.PermissionAttachmentInfo;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import utils.InventoryUtils;
 import utils.WorldGuardUtils;
 
@@ -24,6 +28,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.logging.Logger;
 
 public class GSCommand implements CommandExecutor {
@@ -31,13 +36,18 @@ public class GSCommand implements CommandExecutor {
     private final Map<Player, Location> playerStartPositions = new HashMap<>();
     private final HashMap<Player, Location[]> selectedPoints = new HashMap<>();
     private final HashMap<Player, Boolean> gsMode = new HashMap<>();
+    private final HashMap<Player, Boolean> nameMode = new HashMap<>();
+    private final HashMap<Player, Boolean> confirmMode = new HashMap<>();
     private final Map<Player, Integer> playerFoodLevels = new HashMap<>();
+    private final Map<UUID, String> propertyNames = new HashMap<>();
     private final File dataFolder;
 
     private final VaultHandler vaultHandler;
     private final Main plugin;
     private final Logger logger;
     private ConfigHandler configHandler;
+    private final GUIManager guiManager = GUIManager.getInstance();
+    private gui.GUIGrundstueckverwaltung GUIGrundstueckverwaltung;
 
     public GSCommand(Main plugin, VaultHandler vaultHandler, File dataFolder, Logger logger, ConfigHandler configHandler) {
         this.vaultHandler = vaultHandler;
@@ -45,18 +55,13 @@ public class GSCommand implements CommandExecutor {
         this.dataFolder = dataFolder;
         this.logger = logger;
         this.configHandler = configHandler;
+        this.GUIGrundstueckverwaltung = new GUIGrundstueckverwaltung(this);
     }
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (sender instanceof Player) {
             Player player = (Player) sender;
-
-            // Überprüfen, ob der Spieler in einer erlaubten Welt ist
-            if (!plugin.getAllowedWorlds().contains(player.getWorld().getName())) {
-                player.sendMessage("Der /gs-Befehl ist in dieser Welt nicht erlaubt.");
-                return true;
-            }
 
             // Hauptbefehl /gs
             if (command.getName().equalsIgnoreCase("gs")) {
@@ -70,6 +75,23 @@ public class GSCommand implements CommandExecutor {
 
 
                 if (args.length == 0) {
+                    
+                    // Öffne das GUI basierend auf den Zuständen
+                    GUIGrundstueckverwaltung gui = new GUIGrundstueckverwaltung(this);
+                    guiManager.openGUI(player, gui);
+
+                    //activateGSMode(player);
+                    return true;
+                }
+
+                if (args[0].equalsIgnoreCase("create")) {
+
+                    // Überprüfen, ob der Spieler in einer erlaubten Welt ist
+                    if (!plugin.getAllowedWorlds().contains(player.getWorld().getName())) {
+                        player.sendMessage("Der /gs-Befehl ist in dieser Welt nicht erlaubt.");
+                        return true;
+                    }
+
                     activateGSMode(player);
                     return true;
                 }
@@ -132,7 +154,7 @@ public class GSCommand implements CommandExecutor {
     }
 
     // Grundstücksmodus aktivieren
-    private void activateGSMode(Player player) {
+    public void activateGSMode(Player player) {
         if (gsMode.containsKey(player)) {
             player.sendMessage("Du bist bereits im GS-Modus.");
             return;
@@ -158,17 +180,40 @@ public class GSCommand implements CommandExecutor {
     // Spieler von der Region entfernen
     private void removePlayerFromRegion(Player owner, String playerNameToRemove) {
         OfflinePlayer playerToRemove = Bukkit.getOfflinePlayer(playerNameToRemove);
-        if (playerToRemove.hasPlayedBefore()) {
-            String regionName = "gs_" + owner.getName();
-            if (WorldGuardUtils.regionExists(owner, regionName)) {
+
+        // Prüfen, ob der hinzugefügte Spieler existiert
+        if (!playerToRemove.hasPlayedBefore()) {
+            owner.sendMessage("Spieler " + playerToRemove + " wurde nicht gefunden.");
+            return;
+        }
+
+        // Überprüfen, ob der Spieler auf einem Grundstück steht
+        String regionName = WorldGuardUtils.getRegionAtLocation(owner.getLocation());
+        if (regionName == null) {
+            owner.sendMessage("Du stehst nicht auf einem Grundstück.");
+            return;
+        }
+
+        // Überprüfen, ob der Spieler der Besitzer der Region ist
+        if (WorldGuardUtils.isOwnerOfRegion(owner, regionName)) {
+            // Prüfen, ob der hinzugefügte Spieler der Besitzer ist
+            if (owner.getUniqueId().equals(playerToRemove.getUniqueId())) {
+                owner.sendMessage("Du kannst dich nicht selbst als Mitglied entfernen, da du der Besitzer dieses Grundstücks bist.");
+                return;
+            }
+
+            // Prüfen, ob der Spieler bereits Mitglied ist
+            if (WorldGuardUtils.isMemberOfRegion(playerToRemove.getUniqueId(), regionName, owner.getWorld())) {
+                // Spieler zur Region hinzufügen
                 WorldGuardUtils.removePlayerFromRegion(owner, playerToRemove.getUniqueId(), regionName);
                 owner.sendMessage(playerNameToRemove + " wurde von deinem Grundstück entfernt.");
             } else {
-                owner.sendMessage("Du besitzt kein Grundstück mit dem Namen " + regionName + ".");
+                owner.sendMessage(playerNameToRemove + " ist nicht auf deinem Grundstück geaddet");
             }
         } else {
-            owner.sendMessage("Spieler " + playerNameToRemove + " wurde nicht gefunden.");
+            owner.sendMessage("Du bist nicht der Besitzer dieses Grundstücks.");
         }
+
     }
 
     // Methode, um Ecken für das Grundstück zu setzen
@@ -208,58 +253,144 @@ public class GSCommand implements CommandExecutor {
             player.sendMessage("Du musst beide Ecken markieren, bevor du das Grundstück bestätigen kannst!");
             return;
         }
-        if (points[0] != null && points[1] != null) {
 
-            // Mindestgröße (z.B. 5x5)
-            int minSize = 5;
-
-            // Maximalgröße basierend auf der Spielerpermission
-            int maxSize = getMaxPlotSize(player);
-
-
-            int sizeX = Math.abs(points[0].getBlockX() - points[1].getBlockX()) + 1;
-            int sizeZ = Math.abs(points[0].getBlockZ() - points[1].getBlockZ()) + 1;
-            int area = sizeX * sizeZ;
-
-            // Preis pro Block aus der Konfiguration
-            double pricePerBlock = configHandler.config("buypricePerBlock");// Beispielwert, später aus der config.yml laden
-            double totalCost = area * pricePerBlock;
-
-            // Überprüfe, ob das Grundstück die Mindestgröße und Maximalgröße erfüllt
-            if (sizeX < minSize || sizeZ < minSize) {
-                player.sendMessage("Dein Grundstück muss mindestens " + minSize + "x" + minSize + " groß sein.");
-                return;
-            }
-
-            if (sizeX  > maxSize || sizeZ > maxSize) {
-                player.sendMessage("Dein Grundstück darf maximal " + maxSize + "x" + maxSize + " groß sein.");
-                return;
-            }
-
-            player.sendMessage("Grundstücksgröße: " + area + " Blöcke. Kosten: " + totalCost + " Coins.");
-
-            // Überprüfen, ob der Spieler genug Geld hat
-            if (vaultHandler.hasEnoughMoney(player, totalCost)) {
-                // Geld abbuchen
-                if (vaultHandler.withdrawMoney(player, totalCost)) {
-                    player.sendMessage("Grundstück erfolgreich gekauft! Größe: " + area + " Blöcke.");
-                    // Region erstellen
-                    String regionName = "gs_" + player.getName();
-                    if (WorldGuardUtils.regionExists(player, regionName)) {
-                        player.sendMessage("Du hast bereits ein Grundstück mit diesem Namen.");
-                    } else {
-                        if (WorldGuardUtils.createRegion(player, points[0], points[1], regionName)) {
-                            player.sendMessage("Deine Region wurde erstellt!");
-                            exitGsMode(player);
-                        }
-                    }
-                }
-            } else {
-                player.sendMessage("Du hast nicht genug Geld, um dieses Grundstück zu kaufen.");
-            }
-        } else {
-            player.sendMessage("Du musst beide Ecken auswählen, bevor du das Grundstück sichern kannst.");
+        // Überprüfe auf Überlappung mit existierenden Regionen
+        if (WorldGuardUtils.isRegionOverlapping(player, points[0], points[1])) {
+            player.sendMessage("Du kannst hier kein Grundstück erstellen, da es sich mit einem anderen Grundstück überschneidet.");
+            return;
         }
+
+        // Mindestgröße (z.B. 5x5)
+        int minSize = 5;
+
+        // Maximalgröße basierend auf der Spielerpermission
+        int maxSize = getMaxPlotSize(player);
+
+
+        int sizeX = Math.abs(points[0].getBlockX() - points[1].getBlockX()) + 1;
+        int sizeZ = Math.abs(points[0].getBlockZ() - points[1].getBlockZ()) + 1;
+        int area = sizeX * sizeZ;
+
+        // Preis pro Block aus der Konfiguration
+        double pricePerBlock = configHandler.config("buypricePerBlock");// Beispielwert, später aus der config.yml laden
+        double totalCost = area * pricePerBlock;
+
+        if (!vaultHandler.hasEnoughMoney(player, totalCost)) {
+            player.sendMessage("Du hast nicht genug Geld, um dieses Grundstück zu kaufen.");
+            return;
+        }
+
+        // Überprüfe, ob das Grundstück die Mindestgröße und Maximalgröße erfüllt
+        if (sizeX < minSize || sizeZ < minSize) {
+            player.sendMessage("Dein Grundstück muss mindestens " + minSize + "x" + minSize + " groß sein.");
+            return;
+        }
+
+        if (sizeX  > maxSize || sizeZ > maxSize) {
+            player.sendMessage("Dein Grundstück darf maximal " + maxSize + "x" + maxSize + " groß sein.");
+            return;
+        }
+
+        // Namenswahlmodus starten
+        if (!isInNameMode(player) && !isInConfirmeMode(player)) {
+            enterNameSelectionMode(player, totalCost, area);
+            return;
+        }
+
+        if (isInNameMode(player) && !isInConfirmeMode(player)) {
+            confirmPropertyName(player);
+            return;
+        }
+
+        if (isInConfirmeMode(player)) {
+            creatGs(player, area, points[0], points[1]);
+        }
+    }
+
+    // Aktiviert den Namenswahlmodus für den Spieler
+    public void enterNameSelectionMode(Player player, double totalCost, int area) {
+        player.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, Integer.MAX_VALUE, 1, false, false));
+        player.setWalkSpeed(0); // Bewegung blockieren
+        player.sendTitle("Grundstücksnamen festlegen", "Aktueller Name: -", 10, 999999, 10);
+        clearChat(player);
+        player.sendMessage("Gebe nun im Chat den Namen deines Grundstücks an.");
+
+        nameMode.put(player, true); // Spieler im Namensmodus markieren
+    }
+
+    public void setPropertyName(Player player, String name) {
+        propertyNames.put(player.getUniqueId(), name);
+        nameMode.remove(player.getUniqueId()); // Deaktiviert den Namensmodus
+    }
+
+    public void enterNameMode(Player player) {
+        nameMode.put(player, true); // Aktiviert den Namensmodus
+        player.sendTitle("Grundstücksnamen festlegen", "Gebe den Namen im Chat ein", 10, 999999, 10);
+    }
+
+    // Aufruf beim Klicken auf den grünen Farbstoff zur Bestätigung des Namens
+    public void confirmPropertyName(Player player) {
+        String propertyName = propertyNames.get(player.getUniqueId());
+        if (propertyName == "" || propertyName == null) {
+            player.sendMessage("Du musst erst einen Namen für das Grundstück angeben.");
+            enterNameMode(player); // Falls noch kein Name gesetzt wurde, in den Namensmodus versetzen
+            return;
+        }
+
+        player.sendMessage("Bitte bestätige, dass du das Grundstück für " + calculateTotalCost(player) + " Coins kaufen möchtest.");
+        // Setze den Titel auf den Grundstücksnamen und bitte um Bestätigung
+        player.sendTitle("Bestätigung", "Grundstück: " + propertyName, 10, 999999, 10);
+        confirmMode.put(player, true);
+    }
+
+    public void creatGs(Player player, int area, Location point1, Location point2) {
+
+        double totalCost = calculateTotalCost(player);
+
+        // Grundstücksname aus propertyNames abrufen
+        String regionName = "gs_" + propertyNames.get(player.getUniqueId()) +"_" + player.getName();
+        if (regionName == null || regionName.isEmpty()) {
+            player.sendMessage("Es wurde kein gültiger Name für das Grundstück angegeben.");
+            return;
+        }
+
+        // Prüfen, ob Region bereits existiert
+        if (WorldGuardUtils.regionExists(player, regionName)) {
+            player.sendMessage("Du hast bereits ein Grundstück mit dem Namen '" + propertyNames.get(player.getUniqueId()) + "'. Wähle bitte einen anderen Namen.");
+            confirmMode.remove(player);
+            propertyNames.remove(player);
+            return;
+        }
+
+        // Überprüfen, ob der Spieler genug Geld hat
+        if (!vaultHandler.hasEnoughMoney(player, totalCost)) {
+            player.sendMessage("Du hast nicht genug Geld, um dieses Grundstück zu kaufen.");
+            return;
+        }
+
+        // Geld abbuchen
+        if (vaultHandler.withdrawMoney(player, totalCost)) {
+            player.sendMessage("Grundstück erfolgreich gekauft! Größe: " + area + " Blöcke.");
+
+            // Region erstellen
+            if (WorldGuardUtils.createRegion(player, point1, point2, regionName)) {
+                player.sendMessage("Deine Region wurde erstellt mit dem Namen: " + regionName);
+                exitGsMode(player);
+            }
+        }
+
+
+    }
+
+    // Berechnet den Gesamtpreis basierend auf den ausgewählten Punkten
+    private double calculateTotalCost(Player player) {
+        Location[] points = getSelectedPoints(player);
+        int sizeX = Math.abs(points[0].getBlockX() - points[1].getBlockX()) + 1;
+        int sizeZ = Math.abs(points[0].getBlockZ() - points[1].getBlockZ()) + 1;
+        int area = sizeX * sizeZ;
+
+        double pricePerBlock = configHandler.config("buypricePerBlock"); // Preis aus Konfiguration
+        return area * pricePerBlock;
     }
 
     // Überprüfen, ob ein Spieler im Grundstücksmodus ist
@@ -267,28 +398,42 @@ public class GSCommand implements CommandExecutor {
         return gsMode.getOrDefault(player, false);
     }
 
+    // Überprüfen, ob ein Spieler im Grundstücksmodus ist
+    public boolean isInNameMode(Player player) {
+        return nameMode.getOrDefault(player, false);
+    }
+
+    // Überprüfen, ob ein Spieler im Grundstücksmodus ist
+    public boolean isInConfirmeMode(Player player) {
+        return confirmMode.getOrDefault(player, false);
+    }
+
     public void clearChat(Player player) {
         for (int i = 0; i < 100; i++) {  // Sendet 100 leere Nachrichten, um den Chat zu leeren
             player.sendMessage("");
         }
-        player.sendMessage("Der Chat wurde geleert, du bist jetzt im Grundstücksmodus.");
     }
 
     public int getMaxPlotSize(Player player) {
-        // Standardgröße, falls keine Permission gefunden wird
-        int defaultMaxSize = 10;
+
+        // Falls der Spieler OP ist oder eine globale Wildcard hat, gib einen sehr hohen Wert zurück
+        if (player.isOp() || player.hasPermission("*")) {
+            return 999999999;
+        }
 
         // Iteriere durch alle Permissions des Spielers
         for (PermissionAttachmentInfo permInfo : player.getEffectivePermissions()) {
             String permission = permInfo.getPermission();
-
-            // Prüfe, ob die Permission mit "claim.max." beginnt
             if (permission.startsWith("claim.max.")) {
                 try {
                     // Extrahiere die Zahl hinter "claim.max."
                     String sizeStr = permission.substring("claim.max.".length());
-                    int maxSize = Integer.parseInt(sizeStr);
-                    return maxSize;  // Gib die gefundene Maximalgröße zurück
+                    if (sizeStr.equals("*"))  {
+                        return 999999999;
+                    } else {
+                        int maxSize = Integer.parseInt(sizeStr);
+                        return maxSize;  // Gib die gefundene Maximalgröße zurück
+                    }
                 } catch (NumberFormatException e) {
                     // Falls das, was nach "claim.max." kommt, keine gültige Zahl ist
                     player.sendMessage("Ungültige claim.max.-Permission: " + permission);
@@ -297,7 +442,7 @@ public class GSCommand implements CommandExecutor {
         }
 
         // Falls keine claim.max.-Permission gefunden wurde, verwende die Standardgröße
-        return defaultMaxSize;
+        return configHandler.config("defaultmaxgs");
     }
 
     public boolean hasFirstCorner(Player player) {
@@ -311,10 +456,19 @@ public class GSCommand implements CommandExecutor {
     public void exitGsMode(Player player) {
         Location startPosition = playerStartPositions.get(player);
         if (startPosition != null) {
-            player.teleport(startPosition); // Spieler zurücksetzen
+
+            player.teleport(startPosition);
+            player.removePotionEffect(PotionEffectType.BLINDNESS);
+
             playerStartPositions.remove(player);
             gsMode.remove(player);
             selectedPoints.remove(player);
+            nameMode.remove(player);
+            confirmMode.remove(player);
+            propertyNames.remove(player);
+
+            player.setWalkSpeed(0.2F);
+            player.resetTitle();
 
             // Setzt das Hungerniveau auf den ursprünglichen Wert zurück
             Integer originalFoodLevel = playerFoodLevels.get(player);
