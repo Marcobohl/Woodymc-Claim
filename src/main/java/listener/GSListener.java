@@ -3,6 +3,7 @@ package listener;
 import commands.GSCommand;
 import handlers.ConfigHandler;
 import main.Main;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
@@ -22,9 +23,7 @@ import org.bukkit.event.player.*;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 import static org.bukkit.plugin.java.JavaPlugin.getPlugin;
 
@@ -33,6 +32,8 @@ public class GSListener implements Listener {
     private final GSCommand gsCommand;
     private static final Map<UUID, Long> temporaryProtection = new HashMap<>();
     private ConfigHandler configHandler;
+
+    private final Set<UUID> ignoreNextAction = new HashSet<>();
 
     public GSListener(GSCommand gsCommand, ConfigHandler configHandler) {
         this.gsCommand = gsCommand;
@@ -255,11 +256,14 @@ public class GSListener implements Listener {
                 // Spieler verwendet den roten Farbstoff zum Abbrechen
                 gsCommand.exitGsMode(player); // Inventar wiederherstellen
                 player.sendMessage("Grundstücksauswahl abgebrochen.");
-                event.setCancelled(true); // Verhindere Standardaktionen
-                event.setUseItemInHand(Event.Result.DENY);
-            } else {
+
                 event.setCancelled(true);
                 event.setUseItemInHand(Event.Result.DENY);
+                ignoreNextAction.add(player.getUniqueId());
+                Bukkit.getScheduler().runTaskLater(plugin, () -> ignoreNextAction.remove(player.getUniqueId()), 2);
+
+            } else {
+                event.setCancelled(true);
             }
         }
     }

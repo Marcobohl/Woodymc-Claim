@@ -47,11 +47,11 @@ public class WorldGuardUtils {
 
             // Überprüfe, ob der Spieler ein Eigentümer ist
             if (region.getOwners().contains(player.getUniqueId())) {
-                regions.add("Owner: " + regionName);
+                regions.add(regionName);
             }
             // Überprüfe, ob der Spieler ein Mitglied ist
             else if (region.getMembers().contains(player.getUniqueId())) {
-                regions.add("Member: " + regionName);
+                regions.add(regionName);
             }
         }
 
@@ -203,8 +203,10 @@ public class WorldGuardUtils {
         ProtectedRegion region = regions.getRegion(regionName);
         if (region == null) return false;
 
-        // Prüfen, ob der Spieler als Owner in der Region eingetragen ist
-        return region.getOwners().contains(player.getUniqueId());
+        UUID uuid = player.getUniqueId();
+        String name = player.getName();
+
+        return region.getOwners().contains(uuid) || region.getOwners().contains(name);
     }
 
     // Prüft, ob der Spieler in irgendeiner Region als Owner oder Member eingetragen ist

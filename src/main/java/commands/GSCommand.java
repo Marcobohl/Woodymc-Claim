@@ -460,7 +460,6 @@ public class GSCommand implements CommandExecutor {
             player.removePotionEffect(PotionEffectType.BLINDNESS);
 
             playerStartPositions.remove(player);
-            gsMode.remove(player);
             selectedPoints.remove(player);
             nameMode.remove(player);
             confirmMode.remove(player);
@@ -480,6 +479,7 @@ public class GSCommand implements CommandExecutor {
             GSListener.activateTemporaryProtection(player, configHandler);
             player.sendMessage("Du wurdest an deine Startposition zurückgesetzt. Schutz ist für 10 Sekunden aktiv.");
             restoreInventoryFromJson(player);
+            gsMode.remove(player);
         }
     }
 
