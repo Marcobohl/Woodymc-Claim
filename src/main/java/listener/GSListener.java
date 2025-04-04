@@ -7,6 +7,7 @@ import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
@@ -83,7 +84,6 @@ public class GSListener implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
-        player.sendMessage("join event");
         gsCommand.restoreInventoryFromJson(player); // Prüfen und ggf. Inventar wiederherstellen
     }
 
@@ -147,6 +147,7 @@ public class GSListener implements Listener {
     @EventHandler
     public void onBlockPlace(BlockPlaceEvent event) {
         Player player = event.getPlayer();
+
         if (gsCommand.isInGsMode(player)) {
             event.setCancelled(true);
         }
@@ -255,8 +256,10 @@ public class GSListener implements Listener {
                 gsCommand.exitGsMode(player); // Inventar wiederherstellen
                 player.sendMessage("Grundstücksauswahl abgebrochen.");
                 event.setCancelled(true); // Verhindere Standardaktionen
+                event.setUseItemInHand(Event.Result.DENY);
             } else {
                 event.setCancelled(true);
+                event.setUseItemInHand(Event.Result.DENY);
             }
         }
     }

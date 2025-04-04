@@ -60,8 +60,7 @@ public class GSCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (sender instanceof Player) {
-            Player player = (Player) sender;
+        if (sender instanceof Player player) {
 
             // Hauptbefehl /gs
             if (command.getName().equalsIgnoreCase("gs")) {
@@ -520,6 +519,9 @@ public class GSCommand implements CommandExecutor {
         playerStartPositions.remove(player);
         gsMode.remove(player);
         selectedPoints.remove(player);
+        nameMode.remove(player);
+        confirmMode.remove(player);
+        propertyNames.remove(player);
 
         try (FileReader reader = new FileReader(file)) {
             String inventoryData = new Gson().fromJson(reader, String.class);

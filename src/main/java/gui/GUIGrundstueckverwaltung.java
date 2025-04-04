@@ -42,7 +42,7 @@ public class GUIGrundstueckverwaltung implements GUI{
         // Erstelle das Inventar
         Inventory gui = Bukkit.createInventory(null, 27, "Grundstücksverwaltung");
 
-        if (hasPlot || hasGs && !isOnGSAsOwner) {
+        if ((hasPlot || hasGs) && !isOnGSAsOwner) {
 
             // Erstellen und Platzieren der Gegenstände mit Slot-Angabe
             new ItemBuilder(Material.GOLDEN_AXE)
@@ -58,7 +58,7 @@ public class GUIGrundstueckverwaltung implements GUI{
                     .addToInventory(gui);
 
             // Situation 3: Spieler hat ein Grundstück und steht darauf als Besitzer
-        } else if (hasPlot || hasGs && isOnGSAsOwner) {
+        } else if ((hasPlot || hasGs) && isOnGSAsOwner) {
 
             // Grdunstück löschen
             new ItemBuilder(Material.TNT)
