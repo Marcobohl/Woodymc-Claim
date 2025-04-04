@@ -44,12 +44,25 @@ public class GUIGrundstueckverwaltung implements GUI{
 
         if ((hasPlot || hasGs) && !isOnGSAsOwner) {
 
-            // Erstellen und Platzieren der Gegenstände mit Slot-Angabe
-            new ItemBuilder(Material.GOLDEN_AXE)
-                    .setDisplayName("Grundstück erstellen")
-                    .setPersistentData("id","grundstuecke_create")
-                    .setSlot(12)
-                    .addToInventory(gui);
+
+            // Überprüfen, ob der Spieler in einer erlaubten Welt ist
+            if (!Main.getInstance().getAllowedWorlds().contains(player.getWorld().getName())) {
+                // Erstellen und Platzieren der Gegenstände mit Slot-Angabe
+                new ItemBuilder(Material.BARRIER)
+                        .setDisplayName("Grundstück erstellen")
+                        .setPersistentData("id","grundstuecke_create_error")
+                        .setSlot(12)
+                        .addToInventory(gui);
+            } else {
+
+                // Erstellen und Platzieren der Gegenstände mit Slot-Angabe
+                new ItemBuilder(Material.GOLDEN_AXE)
+                        .setDisplayName("Grundstück erstellen")
+                        .setPersistentData("id","grundstuecke_create")
+                        .setSlot(12)
+                        .addToInventory(gui);
+
+            }
 
             new ItemBuilder(Material.WRITABLE_BOOK)
                     .setDisplayName("Grundstück Liste")
@@ -87,26 +100,6 @@ public class GUIGrundstueckverwaltung implements GUI{
                     .setPersistentData("id","grundstuecke_settings")
                     .setSlot(16)
                     .addToInventory(gui);
-        } else {
-
-            // Überprüfen, ob der Spieler in einer erlaubten Welt ist
-            if (!Main.getInstance().getAllowedWorlds().contains(player.getWorld().getName())) {
-                // Erstellen und Platzieren der Gegenstände mit Slot-Angabe
-                new ItemBuilder(Material.BARRIER)
-                        .setDisplayName("Grundstück erstellen")
-                        .setPersistentData("id","grundstuecke_create_error")
-                        .setSlot(13)
-                        .addToInventory(gui);
-            } else {
-
-                // Erstellen und Platzieren der Gegenstände mit Slot-Angabe
-                new ItemBuilder(Material.GOLDEN_AXE)
-                        .setDisplayName("Grundstück erstellen")
-                        .setPersistentData("id","grundstuecke_create")
-                        .setSlot(13)
-                        .addToInventory(gui);
-
-            }
         }
 
         // Fülle leere Slots mit einem schwarzen Glas-Panel
