@@ -114,35 +114,16 @@ public class PlotsquardUtils {
 
 
 
-    public static void teleportToPlot(Player player, String plotId) {
-
+    public static void teleportToPlot(Player player, String plotId, String worldName) {
         if (!Main.isPlotSquaredAvailable()) {
+            player.sendMessage("§cPlotSquared ist nicht verfügbar.");
+
             return;
-        } else {
-
-            Optional<Plot> optionalPlot = getPlotById(plotId);
-
-            if (optionalPlot.isPresent()) {
-                Plot plot = optionalPlot.get();
-
-                plot.getHome(location -> {
-                    if (location != null) {
-                        org.bukkit.Location bukkitLocation = convertToBukkitLocation(location);
-                        if (bukkitLocation != null) {
-                            player.teleport(bukkitLocation);
-                            player.sendMessage("§aDu wurdest zum Grundstück teleportiert: §e" + plotId);
-                        } else {
-                            player.sendMessage("§cDie Welt für dieses Grundstück wurde nicht gefunden.");
-                        }
-                    } else {
-                        player.sendMessage("§cDieses Grundstück hat keine gültige Heimatposition.");
-                    }
-                });
-            } else {
-                player.sendMessage("§cDas Grundstück mit der ID " + plotId + " wurde nicht gefunden.");
-            }
-
         }
+
+
+        String command = "p home " +  worldName + ";"+ plotId;
+        player.performCommand(command);
     }
 
     public static Location convertToBukkitLocation(com.plotsquared.core.location.Location plotLocation) {

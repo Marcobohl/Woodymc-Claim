@@ -10,6 +10,7 @@ import com.sk89q.worldguard.protection.managers.RegionManager;
 import com.sk89q.worldguard.protection.regions.ProtectedCuboidRegion;
 import com.sk89q.worldguard.protection.regions.ProtectedRegion;
 import com.sk89q.worldguard.protection.regions.RegionContainer;
+import main.Main;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -32,26 +33,25 @@ public class WorldGuardUtils {
     // Gibt eine Liste von Regionen zurück, auf die der Spieler Zugriff hat
     public static List<String> getRegionsWithAccess(Player player) {
         List<String> regions = new ArrayList<>();
-        World world = player.getWorld();
 
-        // Hole den RegionManager für die aktuelle Welt
         RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
-        RegionManager manager = container.get(BukkitAdapter.adapt(world));
 
-        if (manager == null) return regions;
+        for (String worldName : Main.getInstance().getAllowedWorlds()) {
+            World world = Bukkit.getWorld(worldName);
+            if (world == null) continue;
 
-        // Iteriere durch alle Regionen und prüfe die Zugriffsrechte
-        for (Map.Entry<String, ProtectedRegion> entry : manager.getRegions().entrySet()) {
-            ProtectedRegion region = entry.getValue();
-            String regionName = entry.getKey();
+            RegionManager manager = container.get(BukkitAdapter.adapt(world));
+            if (manager == null) continue;
 
-            // Überprüfe, ob der Spieler ein Eigentümer ist
-            if (region.getOwners().contains(player.getUniqueId())) {
-                regions.add(regionName);
-            }
-            // Überprüfe, ob der Spieler ein Mitglied ist
-            else if (region.getMembers().contains(player.getUniqueId())) {
-                regions.add(regionName);
+            for (Map.Entry<String, ProtectedRegion> entry : manager.getRegions().entrySet()) {
+                ProtectedRegion region = entry.getValue();
+                String regionName = entry.getKey();
+
+                if (region.getOwners().contains(player.getUniqueId())) {
+                    regions.add(regionName); // Optionale Weltkennung
+                } else if (region.getMembers().contains(player.getUniqueId())) {
+                    regions.add(regionName); // Optionale Weltkennung
+                }
             }
         }
 
@@ -121,6 +121,19 @@ public class WorldGuardUtils {
                 region.getMembers().addPlayer(playerToAddUUID);
             }
         }
+    }
+
+    public static String getWorldOfRegion(Player player, String regionName) {
+        RegionContainer container = WorldGuard.getInstance().getPlatform().getRegionContainer();
+
+        for (World world : Bukkit.getWorlds()) {
+            RegionManager manager = container.get(BukkitAdapter.adapt(world));
+            if (manager != null && manager.hasRegion(regionName)) {
+                return world.getName();
+            }
+        }
+
+        return "Unbekannt";
     }
 
     public static boolean isRegionOverlapping(Player player, Location point1, Location point2) {

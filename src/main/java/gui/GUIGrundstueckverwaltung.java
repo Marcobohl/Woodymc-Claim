@@ -27,6 +27,9 @@ public class GUIGrundstueckverwaltung implements GUI{
         this.gsCommand = gsCommand;
     }
 
+    public GUIGrundstueckverwaltung(GUIGrundstueckliste guiGrundstueckliste) {
+    }
+
     public void openInventory(Player player) {
 
         boolean isOnGSAsOwner = false;
